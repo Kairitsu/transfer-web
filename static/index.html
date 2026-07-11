@@ -3,8 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
   <title>Transfer</title>
-  <link rel="stylesheet" href="/static/styles.css?v=transfer-web-20260709-3">
+  <script>
+    (() => {
+      let savedTheme = null;
+      try {
+        const value = localStorage.getItem("transfer-web-theme");
+        if (value === "light" || value === "dark") savedTheme = value;
+      } catch (error) {
+        // Fall back to the system preference when browser storage is unavailable.
+      }
+      document.documentElement.dataset.theme = savedTheme ||
+        (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/styles.css?v=transfer-web-20260711-3">
 </head>
 <body>
   <main class="app">
@@ -14,8 +28,22 @@
         <p id="taskLine">就绪</p>
       </div>
       <div class="top-actions">
+        <label class="toggle-control" for="showHidden">
+          <input id="showHidden" type="checkbox" role="switch">
+          <span class="toggle-track" aria-hidden="true"></span>
+          <span>显示隐藏文件</span>
+        </label>
         <button id="refreshAll" class="icon-button" title="刷新两侧目录">⟳</button>
         <button id="stopTask" class="danger" title="停止当前任务">停止任务</button>
+        <button id="themeToggle" class="icon-button theme-toggle" type="button" aria-label="切换到亮色主题" title="切换到亮色主题">
+          <svg class="theme-icon theme-icon-sun" aria-hidden="true" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path>
+          </svg>
+          <svg class="theme-icon theme-icon-moon" aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -102,6 +130,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=transfer-web-20260709-3"></script>
+  <script src="/static/app.js?v=transfer-web-20260711-3"></script>
 </body>
 </html>

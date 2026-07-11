@@ -1,6 +1,7 @@
 const state = {
   us: { path: "", entries: [], selected: new Set(), loadSeq: 0, loading: false, queuedLoad: false, loadedOnce: false, error: "" },
   kr: { path: "", entries: [], selected: new Set(), loadSeq: 0, loading: false, queuedLoad: false, loadedOnce: false, error: "" },
+  showHidden: false,
   lastTaskId: "",
   lastTaskStatus: "",
 };
@@ -17,6 +18,8 @@ const els = {
   usPaneStatus: document.getElementById("usPaneStatus"),
   krPaneStatus: document.getElementById("krPaneStatus"),
   refreshAll: document.getElementById("refreshAll"),
+  themeToggle: document.getElementById("themeToggle"),
+  showHidden: document.getElementById("showHidden"),
   copyToKr: document.getElementById("copyToKr"),
   copyToUs: document.getElementById("copyToUs"),
   stopTask: document.getElementById("stopTask"),
@@ -42,6 +45,25 @@ function api(path, options = {}) {
     }
     return body;
   });
+}
+
+function setTheme(theme, persist = true) {
+  const light = theme === "light";
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  const nextThemeLabel = light ? "切换到暗色主题" : "切换到亮色主题";
+  els.themeToggle.setAttribute("aria-label", nextThemeLabel);
+  els.themeToggle.title = nextThemeLabel;
+  if (persist) {
+    try {
+      localStorage.setItem("transfer-web-theme", light ? "light" : "dark");
+    } catch (error) {
+      // The theme still applies for this page when browser storage is unavailable.
+    }
+  }
+}
+
+function toggleTheme() {
+  setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 }
 
 function fullPath(side) {
@@ -79,6 +101,10 @@ function iconFor(entry) {
   return "•";
 }
 
+function isHiddenEntry(entry) {
+  return entry.name !== ".." && entry.name.startsWith(".");
+}
+
 function render(side) {
   const data = state[side];
   const list = side === "us" ? els.usList : els.krList;
@@ -90,7 +116,9 @@ function render(side) {
   upButton.disabled = !data.path;
   list.innerHTML = "";
 
-  if (data.entries.length === 0) {
+  const visibleEntries = data.entries.filter((entry) => state.showHidden || !isHiddenEntry(entry));
+
+  if (visibleEntries.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 4;
@@ -100,9 +128,10 @@ function render(side) {
     list.appendChild(row);
   }
 
-  for (const entry of data.entries) {
+  for (const entry of visibleEntries) {
     const row = document.createElement("tr");
     row.className = `file-row${entry.safe ? "" : " disabled"}`;
+    row.classList.toggle("selected", data.selected.has(entry.path));
     row.title = entry.safe ? entry.path : entry.reason || "不可选择";
 
     const checkCell = document.createElement("td");
@@ -115,6 +144,7 @@ function render(side) {
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) data.selected.add(entry.path);
       else data.selected.delete(entry.path);
+      row.classList.toggle("selected", checkbox.checked);
       updateTransferButtons();
     });
     checkCell.appendChild(checkbox);
@@ -180,7 +210,7 @@ async function load(side) {
   if (!dataState.loadedOnce && dataState.entries.length === 0) render(side);
 
   try {
-    const data = await api(`/api/list?side=${encodeURIComponent(side)}&path=${encodeURIComponent(requestPath)}`);
+    const data = await api(`/api/list?side=${encodeURIComponent(side)}&path=${encodeURIComponent(requestPath)}&showHidden=${state.showHidden ? "1" : "0"}`);
     if (requestSeq !== dataState.loadSeq || requestPath !== dataState.path) return;
     dataState.path = data.path || "";
     dataState.entries = data.entries || [];
@@ -215,6 +245,15 @@ function openDir(side, path) {
 function up(side) {
   state[side].path = parentPath(state[side].path);
   load(side);
+}
+
+function toggleHiddenFiles() {
+  state.showHidden = els.showHidden.checked;
+  for (const side of ["us", "kr"]) {
+    state[side].selected.clear();
+    render(side);
+  }
+  Promise.all([load("us"), load("kr")]);
 }
 
 async function startTransfer(direction) {
@@ -323,9 +362,24 @@ els.krUp.addEventListener("click", () => up("kr"));
 els.usRefresh.addEventListener("click", () => load("us"));
 els.krRefresh.addEventListener("click", () => load("kr"));
 els.refreshAll.addEventListener("click", () => Promise.all([load("us"), load("kr"), pollStatus()]));
+els.themeToggle.addEventListener("click", toggleTheme);
+els.showHidden.addEventListener("change", toggleHiddenFiles);
 els.copyToKr.addEventListener("click", () => startTransfer("us_to_kr"));
 els.copyToUs.addEventListener("click", () => startTransfer("kr_to_us"));
 els.stopTask.addEventListener("click", stopTask);
 
+setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark", false);
+const systemTheme = window.matchMedia("(prefers-color-scheme: light)");
+function followSystemTheme(event) {
+  try {
+    const savedTheme = localStorage.getItem("transfer-web-theme");
+    if (savedTheme === "light" || savedTheme === "dark") return;
+  } catch (error) {
+    // Continue following the system theme when browser storage is unavailable.
+  }
+  setTheme(event.matches ? "light" : "dark", false);
+}
+if (systemTheme.addEventListener) systemTheme.addEventListener("change", followSystemTheme);
+else systemTheme.addListener?.(followSystemTheme);
 Promise.all([load("us"), load("kr"), pollStatus()]);
 setInterval(pollStatus, 2000);

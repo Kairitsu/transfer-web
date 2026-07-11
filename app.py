@@ -123,6 +123,9 @@ def is_safe_rel(value):
     except Exception:
         return False
 
+def should_show_entry(name, show_hidden=False):
+    return name == ".." or show_hidden or not name.startswith(".")
+
 def inside(path):
     real = os.path.realpath(path)
     return real == BASE or real.startswith(BASE + "/")
@@ -164,6 +167,7 @@ def entry_to_dict(parent_rel, entry):
 
 op = sys.argv[1]
 rel = base64.b64decode(sys.argv[2].encode("ascii")).decode("utf-8")
+show_hidden = len(sys.argv) > 3 and sys.argv[3] == "1"
 
 try:
     if op == "list":
@@ -173,6 +177,8 @@ try:
         entries = []
         with os.scandir(real) as it:
             for entry in it:
+                if not should_show_entry(entry.name, show_hidden):
+                    continue
                 if len(entries) >= MAX_LIST_ENTRIES:
                     break
                 entries.append(entry_to_dict(rel, entry))
@@ -284,10 +290,10 @@ def encode_rel(rel):
     return base64.b64encode(safe_rel.encode("utf-8")).decode("ascii")
 
 
-def run_remote(op, rel, timeout=30):
+def run_remote(op, rel, timeout=30, show_hidden=False):
     rel_b64 = encode_rel(rel)
     proc = subprocess.run(
-        SSH_OPTS + [REMOTE, "python3", "-", op, rel_b64],
+        SSH_OPTS + [REMOTE, "python3", "-", op, rel_b64, "1" if show_hidden else "0"],
         input=REMOTE_HELPER,
         text=True,
         stdout=subprocess.PIPE,
@@ -342,13 +348,19 @@ def local_entry_to_dict(parent_rel, entry):
     }
 
 
-def list_local(rel):
+def should_show_entry(name, show_hidden=False):
+    return name == ".." or show_hidden or not name.startswith(".")
+
+
+def list_local(rel, show_hidden=False):
     target, real, rel = local_abs(rel, must_exist=True)
     if not real.is_dir():
         raise AppError("目标不是目录。")
     entries = []
     with os.scandir(real) as it:
         for entry in it:
+            if not should_show_entry(entry.name, show_hidden):
+                continue
             if len(entries) >= MAX_LIST_ENTRIES:
                 break
             try:
@@ -374,8 +386,8 @@ def list_local(rel):
     }
 
 
-def list_remote(rel):
-    payload = run_remote("list", rel, timeout=40)
+def list_remote(rel, show_hidden=False):
+    payload = run_remote("list", rel, timeout=40, show_hidden=show_hidden)
     payload["side"] = "us"
     return payload
 
@@ -717,10 +729,11 @@ class Handler(BaseHTTPRequestHandler):
                 qs = parse_qs(parsed.query)
                 side = (qs.get("side") or [""])[0]
                 rel = (qs.get("path") or [""])[0]
+                show_hidden = (qs.get("showHidden") or [""])[0].lower() in ("1", "true", "yes", "on")
                 if side == "kr":
-                    self.send_json({"ok": True, **list_local(rel)})
+                    self.send_json({"ok": True, **list_local(rel, show_hidden=show_hidden)})
                 elif side == "us":
-                    self.send_json({"ok": True, **list_remote(rel)})
+                    self.send_json({"ok": True, **list_remote(rel, show_hidden=show_hidden)})
                 else:
                     raise AppError("未知面板。")
             elif parsed.path == "/api/status":
