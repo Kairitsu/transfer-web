@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transfer</title>
+  <link rel="stylesheet" href="/static/styles.css?v=transfer-web-20260709-3">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>Transfer</h1>
+        <p id="taskLine">就绪</p>
+      </div>
+      <div class="top-actions">
+        <button id="refreshAll" class="icon-button" title="刷新两侧目录">⟳</button>
+        <button id="stopTask" class="danger" title="停止当前任务">停止任务</button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <section class="pane" data-side="us">
+        <div class="pane-head">
+          <div>
+            <h2>美国</h2>
+            <p>/home/ubuntu/<span id="usPathLabel"></span></p>
+          </div>
+          <div class="pane-actions">
+            <span id="usPaneStatus" class="pane-status"></span>
+            <button id="usUp" class="icon-button" title="返回上级">↑</button>
+            <button id="usRefresh" class="icon-button" title="刷新目录">⟳</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="check-col"></th>
+                <th>名称</th>
+                <th class="size-col">大小</th>
+                <th class="time-col">修改时间</th>
+              </tr>
+            </thead>
+            <tbody id="usList"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="center-rail">
+        <button id="copyToKr" class="primary" title="美国 → 韩国">美国 → 韩国</button>
+        <button id="copyToUs" class="primary" title="韩国 → 美国">韩国 → 美国</button>
+      </section>
+
+      <section class="pane" data-side="kr">
+        <div class="pane-head">
+          <div>
+            <h2>韩国</h2>
+            <p>/home/azureuser/<span id="krPathLabel"></span></p>
+          </div>
+          <div class="pane-actions">
+            <span id="krPaneStatus" class="pane-status"></span>
+            <button id="krUp" class="icon-button" title="返回上级">↑</button>
+            <button id="krRefresh" class="icon-button" title="刷新目录">⟳</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="check-col"></th>
+                <th>名称</th>
+                <th class="size-col">大小</th>
+                <th class="time-col">修改时间</th>
+              </tr>
+            </thead>
+            <tbody id="krList"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="status-panel">
+      <div class="status-grid">
+        <div>
+          <div class="label">状态</div>
+          <div id="statusText" class="value">空闲</div>
+        </div>
+        <div>
+          <div class="label">当前项目</div>
+          <div id="currentItem" class="value muted">-</div>
+        </div>
+        <div>
+          <div class="label">任务 ID</div>
+          <div id="taskId" class="value muted">-</div>
+        </div>
+      </div>
+      <div class="progress">
+        <div id="progressBar"></div>
+      </div>
+      <pre id="logBox"></pre>
+    </section>
+  </main>
+
+  <script src="/static/app.js?v=transfer-web-20260709-3"></script>
+</body>
+</html>
