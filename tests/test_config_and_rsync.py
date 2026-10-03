@@ -21,6 +21,21 @@ class ConfigTests(TempDirTestCase):
         config = load_config(REPO / "config.example.ini")
         self.assertEqual(len(config.endpoints), 2)
         self.assertNotEqual(config.left, config.right)
+        self.assertTrue(config.require_tailscale)
+
+    def test_tailscale_is_required_by_default(self):
+        endpoints = "[endpoint:a]\nroot = /a\n[endpoint:b]\nroot = /b\n"
+        self.assertTrue(load_config(self.write(endpoints)).require_tailscale)
+        for listen in ("127.0.0.1", "localhost", "::1"):
+            with self.subTest(listen):
+                config = load_config(self.write(f"[server]\nlisten = {listen}\n" + endpoints))
+                self.assertTrue(config.require_tailscale)
+        with self.assertRaises(ConfigError):
+            load_config(self.write("[server]\nlisten = 0.0.0.0\n" + endpoints))
+        config = load_config(self.write("[server]\nlisten = 0.0.0.0\nrequire_tailscale = no\n" + endpoints))
+        self.assertFalse(config.require_tailscale)
+        with self.assertRaises(ConfigError):
+            load_config(self.write("[server]\nrequire_tailscale = maybe\n" + endpoints))
 
     def test_names_and_layout_come_from_config(self):
         config = load_config(self.write("""
