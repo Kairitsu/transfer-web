@@ -1,0 +1,34 @@
+[Unit]
+Description=Transfer Web (rsync between servers)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+; Run as the account that owns the files you transfer, not root.
+User=azureuser
+Group=azureuser
+WorkingDirectory=/opt/transfer-web
+ExecStart=/usr/bin/python3 /opt/transfer-web/app.py --config /etc/transfer-web/config.ini
+Restart=on-failure
+RestartSec=3
+; Let the service stop its rsync cleanly and record the task as interrupted.
+KillMode=mixed
+TimeoutStopSec=20
+
+; Hardening: the service only needs its state/log directories and the
+; directories it transfers into.
+StateDirectory=transfer-web
+LogsDirectory=transfer-web
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/home/azureuser
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
