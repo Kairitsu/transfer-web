@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 from .config import ConfigError, find_config_path, load_config
 from .endpoints import EndpointClient, control_dir_for, prepare_control_dir
 from .errors import AppError
+from .tailscale import startup_notes
 from .tasks import TaskManager
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -136,6 +137,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_text(self, text, status):
+        body = (text + "\n").encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     def send_error_json(self, exc):
         if isinstance(exc, AppError):
             self.send_json({"ok": False, "error": str(exc)}, exc.status)
@@ -167,8 +177,15 @@ class Handler(BaseHTTPRequestHandler):
         return (self.headers.get("Tailscale-User-Login") or "").strip()
 
     def check_user(self):
-        allowed = self.app.config.allowed_users
-        if allowed and self.tailscale_user() not in allowed:
+        config = self.app.config
+        user = self.tailscale_user()
+        if config.require_tailscale and not user:
+            raise AppError(
+                "请通过 Tailscale 访问本页面（tailscale serve 给出的 https://….ts.net 地址）。"
+                "直接访问端口、经 Funnel 或从打了 tag 的设备访问都会被拒绝。",
+                HTTPStatus.FORBIDDEN,
+            )
+        if config.allowed_users and user not in config.allowed_users:
             raise AppError("没有访问权限。", HTTPStatus.FORBIDDEN)
 
     def check_same_origin(self):
@@ -226,7 +243,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            self.check_user()
+            try:
+                self.check_user()
+            except AppError as exc:
+                if urlparse(self.path).path.startswith("/api/"):
+                    raise
+                self.send_text(str(exc), exc.status)  # readable in the browser
+                return
             parsed = urlparse(self.path)
             path = parsed.path
             qs = parse_qs(parsed.query)
@@ -307,6 +330,9 @@ def main(argv=None):
 
     signal.signal(signal.SIGTERM, on_signal)
     print(f"transfer-web listening on {config.listen}:{config.port} (config: {config.path})", flush=True)
+    if config.require_tailscale:
+        for line in startup_notes(config.port):
+            print(line, flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

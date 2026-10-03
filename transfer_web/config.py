@@ -1,4 +1,5 @@
 import configparser
+import ipaddress
 import os
 import re
 from dataclasses import dataclass, field
@@ -55,6 +56,9 @@ class Config:
     state_dir: Path = Path("/var/lib/transfer-web")
     log_dir: Path = Path("/var/log/transfer-web")
     allowed_users: list = field(default_factory=list)
+    # Only accept requests forwarded by `tailscale serve` (they carry the
+    # Tailscale-User-Login header, which serve strips from client input).
+    require_tailscale: bool = True
     history_limit: int = 200
     log_retention_days: int = 30
     title: str = "Transfer"
@@ -87,6 +91,22 @@ def _int(section, key, default, minimum=0):
     if value < minimum:
         raise ConfigError(f"[{section.name}] {key} 不能小于 {minimum}。")
     return value
+
+
+def _bool(section, key, default):
+    try:
+        return section.getboolean(key, fallback=default)
+    except ValueError as exc:
+        raise ConfigError(f"[{section.name}] {key} 只能是 yes 或 no。") from exc
+
+
+def _is_loopback(host):
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def _dir(base, value):
@@ -149,8 +169,15 @@ def load_config(path):
         config.allowed_users = [
             user.strip() for user in re.split(r"[,\s]+", server.get("allowed_users", "")) if user.strip()
         ]
+        config.require_tailscale = _bool(server, "require_tailscale", config.require_tailscale)
         config.history_limit = _int(server, "history_limit", config.history_limit, minimum=1)
         config.log_retention_days = _int(server, "log_retention_days", config.log_retention_days)
+    if config.require_tailscale and not _is_loopback(config.listen):
+        # Anyone who can reach a non-loopback port could forge the identity header.
+        raise ConfigError(
+            "[server] require_tailscale 开启时 listen 只能是本机地址（如 127.0.0.1），"
+            "对外访问交给 tailscale serve。"
+        )
 
     for section_name in parser.sections():
         if section_name.startswith("endpoint:"):

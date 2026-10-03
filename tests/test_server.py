@@ -71,6 +71,23 @@ class ServerTests(TempDirTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(json.loads(data)["user"], "me@example.com")
 
+    def test_requires_tailscale_identity(self):
+        self.start(require_tailscale=True)
+        response, body = self.request("GET", "/")
+        self.assertEqual(response.status, 403)
+        self.assertTrue(response.getheader("Content-Type").startswith("text/plain"))
+        self.assertIn("Tailscale", body.decode("utf-8"))
+        response, data = self.request("GET", "/api/config")
+        self.assertEqual(response.status, 403)
+        self.assertIn("Tailscale", json.loads(data)["error"])
+        response, _ = self.post_json("/api/transfer", {})
+        self.assertEqual(response.status, 403)
+        login = {"Tailscale-User-Login": "me@example.com"}
+        response, _ = self.request("GET", "/", headers=login)
+        self.assertEqual(response.status, 200)
+        response, data = self.request("GET", "/api/config", headers=login)
+        self.assertEqual(json.loads(data)["user"], "me@example.com")
+
     def test_static_files_headers_and_etag(self):
         self.start()
         response, body = self.request("GET", "/")

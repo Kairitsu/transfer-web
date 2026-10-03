@@ -27,6 +27,7 @@ def local_config(base, **overrides):
         path=base / "config.ini",
         listen="127.0.0.1",
         port=0,
+        require_tailscale=False,
         state_dir=base / "state",
         log_dir=base / "logs",
         endpoints={
