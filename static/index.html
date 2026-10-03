@@ -5,131 +5,179 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
   <title>Transfer</title>
-  <script>
-    (() => {
-      let savedTheme = null;
-      try {
-        const value = localStorage.getItem("transfer-web-theme");
-        if (value === "light" || value === "dark") savedTheme = value;
-      } catch (error) {
-        // Fall back to the system preference when browser storage is unavailable.
-      }
-      document.documentElement.dataset.theme = savedTheme ||
-        (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-    })();
-  </script>
-  <link rel="stylesheet" href="/static/styles.css?v=transfer-web-20260711-3">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <script src="/static/theme-init.js"></script>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+  <svg class="icon-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V8z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M5.5 11.5 12 5l6.5 6.5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11.5A8 8 0 1 0 17.7 17"/><path d="M20 4.5v7h-7"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M13.5 5.5 20 12l-6.5 6.5"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M20 12H4"/><path d="M10.5 5.5 4 12l6.5 6.5"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h15"/><path d="m15 4 4 4-4 4"/><path d="M20 16H5"/><path d="m9 12-4 4 4 4"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5"/><path d="M12 17.2v.3"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></symbol>
+  </svg>
+
   <main class="app">
     <header class="topbar">
-      <div>
-        <h1>Transfer</h1>
-        <p id="taskLine">就绪</p>
+      <div class="brand">
+        <h1 id="appTitle">Transfer</h1>
+        <p id="taskLine" class="task-line">正在连接…</p>
       </div>
       <div class="top-actions">
+        <span id="userBadge" class="user-badge" hidden><svg class="icon"><use href="#i-user"/></svg><span></span></span>
         <label class="toggle-control" for="showHidden">
           <input id="showHidden" type="checkbox" role="switch">
           <span class="toggle-track" aria-hidden="true"></span>
           <span>显示隐藏文件</span>
         </label>
-        <button id="refreshAll" class="icon-button" title="刷新两侧目录">⟳</button>
-        <button id="stopTask" class="danger" title="停止当前任务">停止任务</button>
-        <button id="themeToggle" class="icon-button theme-toggle" type="button" aria-label="切换到亮色主题" title="切换到亮色主题">
-          <svg class="theme-icon theme-icon-sun" aria-hidden="true" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path>
-          </svg>
-          <svg class="theme-icon theme-icon-moon" aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
-          </svg>
+        <button id="refreshAll" class="icon-button" type="button" aria-label="刷新两侧目录" title="刷新两侧目录"><svg class="icon"><use href="#i-refresh"/></svg></button>
+        <button id="openHistory" class="button" type="button"><svg class="icon"><use href="#i-history"/></svg><span>历史</span></button>
+        <button id="themeToggle" class="icon-button theme-toggle" type="button" aria-label="切换主题" title="切换主题">
+          <svg class="icon theme-icon-sun"><use href="#i-sun"/></svg>
+          <svg class="icon theme-icon-moon"><use href="#i-moon"/></svg>
         </button>
       </div>
     </header>
 
     <section class="workspace">
-      <section class="pane" data-side="us">
-        <div class="pane-head">
-          <div>
-            <h2>美国</h2>
-            <p>/home/ubuntu/<span id="usPathLabel"></span></p>
-          </div>
-          <div class="pane-actions">
-            <span id="usPaneStatus" class="pane-status"></span>
-            <button id="usUp" class="icon-button" title="返回上级">↑</button>
-            <button id="usRefresh" class="icon-button" title="刷新目录">⟳</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="check-col"></th>
-                <th>名称</th>
-                <th class="size-col">大小</th>
-                <th class="time-col">修改时间</th>
-              </tr>
-            </thead>
-            <tbody id="usList"></tbody>
-          </table>
-        </div>
+      <section class="pane" id="paneLeft" aria-label="左侧服务器"></section>
+      <section class="center-rail" aria-label="传输">
+        <button id="copyRight" class="transfer-button" type="button" disabled>
+          <span class="transfer-text"><span class="transfer-label">复制到右侧</span><span class="transfer-sub">未选择</span></span>
+          <svg class="icon transfer-arrow"><use href="#i-arrow-right"/></svg>
+        </button>
+        <button id="copyLeft" class="transfer-button reverse" type="button" disabled>
+          <svg class="icon transfer-arrow"><use href="#i-arrow-left"/></svg>
+          <span class="transfer-text"><span class="transfer-label">复制到左侧</span><span class="transfer-sub">未选择</span></span>
+        </button>
+        <button id="swapSides" class="button subtle" type="button" title="交换左右两侧"><svg class="icon"><use href="#i-swap"/></svg><span>交换</span></button>
       </section>
-
-      <section class="center-rail">
-        <button id="copyToKr" class="primary" title="美国 → 韩国">美国 → 韩国</button>
-        <button id="copyToUs" class="primary" title="韩国 → 美国">韩国 → 美国</button>
-      </section>
-
-      <section class="pane" data-side="kr">
-        <div class="pane-head">
-          <div>
-            <h2>韩国</h2>
-            <p>/home/azureuser/<span id="krPathLabel"></span></p>
-          </div>
-          <div class="pane-actions">
-            <span id="krPaneStatus" class="pane-status"></span>
-            <button id="krUp" class="icon-button" title="返回上级">↑</button>
-            <button id="krRefresh" class="icon-button" title="刷新目录">⟳</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="check-col"></th>
-                <th>名称</th>
-                <th class="size-col">大小</th>
-                <th class="time-col">修改时间</th>
-              </tr>
-            </thead>
-            <tbody id="krList"></tbody>
-          </table>
-        </div>
-      </section>
+      <section class="pane" id="paneRight" aria-label="右侧服务器"></section>
     </section>
 
-    <section class="status-panel">
-      <div class="status-grid">
-        <div>
-          <div class="label">状态</div>
-          <div id="statusText" class="value">空闲</div>
+    <section class="status-panel" aria-label="任务状态">
+      <div class="status-head">
+        <div class="status-main">
+          <span id="statusBadge" class="badge" data-status="idle">空闲</span>
+          <span id="statusTitle" class="status-title">没有任务</span>
         </div>
-        <div>
-          <div class="label">当前项目</div>
-          <div id="currentItem" class="value muted">-</div>
-        </div>
-        <div>
-          <div class="label">任务 ID</div>
-          <div id="taskId" class="value muted">-</div>
+        <div class="status-actions">
+          <span id="queueLine" class="queue-line" hidden></span>
+          <button id="stopTask" class="danger" type="button" hidden><svg class="icon"><use href="#i-stop"/></svg><span>停止</span></button>
         </div>
       </div>
-      <div class="progress">
+      <div class="progress" id="progress" role="progressbar" aria-label="传输进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div id="progressBar"></div>
       </div>
-      <pre id="logBox"></pre>
+      <dl id="statusGrid" class="status-grid"></dl>
+      <p id="statusError" class="status-error" hidden></p>
+      <details id="logDetails" class="log-details">
+        <summary>传输日志</summary>
+        <pre id="logBox" tabindex="0"></pre>
+      </details>
     </section>
   </main>
 
-  <script src="/static/app.js?v=transfer-web-20260711-3"></script>
+  <dialog id="confirmDialog" class="dialog" aria-labelledby="confirmTitle">
+    <div class="dialog-body">
+      <header class="dialog-head">
+        <h2 id="confirmTitle">确认传输</h2>
+        <button class="icon-button" type="button" data-close aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
+      </header>
+      <div class="route">
+        <div class="route-end">
+          <span class="label">从</span>
+          <strong id="cfFromName"></strong>
+        </div>
+        <svg class="icon route-arrow"><use href="#i-arrow-right"/></svg>
+        <div class="route-end">
+          <span class="label">到</span>
+          <strong id="cfToName"></strong>
+          <code id="cfToPath" class="path-text"></code>
+        </div>
+      </div>
+      <ul id="cfItems" class="item-list"></ul>
+      <div id="cfPreview" class="preview" aria-live="polite"></div>
+      <label class="check-line">
+        <input id="cfSkipExisting" type="checkbox">
+        <span>跳过目标端已存在的文件（不覆盖）</span>
+      </label>
+      <footer class="dialog-actions">
+        <button type="button" data-close>取消</button>
+        <button id="cfStart" class="primary" type="button">开始传输</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="historyDialog" class="dialog wide" aria-labelledby="historyTitle">
+    <div class="dialog-body">
+      <header class="dialog-head">
+        <h2 id="historyTitle">任务历史</h2>
+        <button class="icon-button" type="button" data-close aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
+      </header>
+      <div class="history-layout">
+        <ul id="historyList" class="history-list" aria-label="任务列表"></ul>
+        <section id="historyDetail" class="history-detail" aria-live="polite">
+          <p class="muted">选择一个任务查看详情和日志。</p>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="assertive"></div>
+
+  <template id="paneTemplate">
+    <div class="pane-head">
+      <div class="pane-title">
+        <span class="conn-dot" data-state="unknown" role="img" aria-label="连接状态未知"></span>
+        <h2 class="pane-name"></h2>
+        <select class="endpoint-select" aria-label="切换服务器" hidden></select>
+        <span class="pane-host"></span>
+      </div>
+      <div class="pane-actions">
+        <span class="pane-status" aria-live="polite"></span>
+        <button class="icon-button up-button" type="button" aria-label="返回上级目录" title="返回上级目录"><svg class="icon"><use href="#i-up"/></svg></button>
+        <button class="icon-button refresh-button" type="button" aria-label="刷新目录" title="刷新目录"><svg class="icon"><use href="#i-refresh"/></svg></button>
+      </div>
+    </div>
+    <div class="pathbar">
+      <nav class="breadcrumbs" aria-label="当前路径"></nav>
+      <input class="path-input" type="text" spellcheck="false" autocomplete="off" aria-label="输入路径，回车前往" hidden>
+      <button class="icon-button edit-path" type="button" aria-label="输入路径" title="输入路径"><svg class="icon"><use href="#i-pencil"/></svg></button>
+      <input class="filter-input" type="search" placeholder="筛选" aria-label="筛选当前目录">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="check-col"><input class="select-all" type="checkbox" aria-label="全选"></th>
+            <th class="name-col" data-key="name"><button class="sort" type="button" data-key="name">名称<span class="sort-ind"></span></button></th>
+            <th class="size-col" data-key="size"><button class="sort" type="button" data-key="size">大小<span class="sort-ind"></span></button></th>
+            <th class="time-col" data-key="mtime"><button class="sort" type="button" data-key="mtime">修改时间<span class="sort-ind"></span></button></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pane-foot">
+      <span class="pane-count"></span>
+      <span class="pane-warning" hidden><svg class="icon"><use href="#i-alert"/></svg><span></span></span>
+    </div>
+  </template>
+
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>
